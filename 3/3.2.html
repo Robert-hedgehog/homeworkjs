@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Таблица умножения 1 - 10</title>
+    <style>
+    table {
+        border-collapse: collapse;
+        margin: 20px auto;
+        font-family: Arial, sans-serif;
+        width: 90%;
+    }
+    th, td {
+        border: 1px solid grey;
+        padding: 6px 12px;
+        text-align: center;
+    }
+    th {
+        background: peachpuff;
+        font-weight: bold;
+    }
+    div {
+        max-width: 800px;
+        margin: auto;
+        border-radius: 15px;
+        padding: 20px;
+    }
+    h2 {
+        text-align: center;
+        font-family: Arial, sans-serif;
+    }
+    </style>
+</head>
+<body>
+    <div>
+        <h2>Таблица умножения от 1 до 10</h2>
+        <table id="multable"></table>
+    </div>
+
+    <script>
+        const table = document.getElementById('multable');
+        const headerRow = document.createElement('tr');
+        headerRow.appendChild(document.createElement('th'));
+        for (let i = 1; i <= 10; i++) {
+            const th = document.createElement('th');
+            th.textContent = i;
+            headerRow.appendChild(th);
+        }
+        table.appendChild(headerRow);
+
+        for (let i = 1; i <= 10; i++) {
+            const row = document.createElement('tr');
+            const rowHeader = document.createElement('th');
+            rowHeader.textContent = i;
+            row.appendChild(rowHeader);
+            for (let j = 1; j <= 10; j++) {
+                const cell = document.createElement('td');
+                cell.textContent = i * j;
+                row.appendChild(cell);
+            }
+            table.appendChild(row);
+        }
+    </script>
+</body>
+</html>

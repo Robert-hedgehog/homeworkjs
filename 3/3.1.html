@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Календарь</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background: #fefefe;
+            display: flex;
+            justify-content: center;
+        }
+        table {
+            border-collapse: collapse;
+            width: 400px;
+            text-align: center;
+            font-size: 18px;
+            box-shadow: 0 0 10px #ccc;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid grey;
+            width: 14.28%;
+        }
+        th {
+            background-color: peachpuff;
+        }
+        td.weekend {
+            color: red;
+        }
+        td.today {
+            position: relative;
+            font-weight: bold;
+        }
+        td.today::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 30px;
+            height: 30px;
+            border: 2px solid red;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <h2 id="monthName"></h2>
+        <table id="calendar"></table>
+    </div>
+
+    <script>
+        let locale = 'ru';
+
+        function createCalendar(customLocale) {
+            const calendar = document.getElementById('calendar');
+            const monthNameElem = document.getElementById('monthName');
+            const now = new Date();
+
+            const year = now.getFullYear();
+            const month = now.getMonth();
+
+            const currentLocale = customLocale || locale;
+
+            const monthLabel = now.toLocaleDateString(currentLocale, { month: 'long' });
+            monthNameElem.textContent = `${monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)} ${year}`;
+            calendar.innerHTML = '';
+
+            let weekdayBase = new Date(2025, 9, 6);
+            const daysOfWeek = [];
+            for (let i = 0; i < 7; i++) {
+                let d = new Date(weekdayBase);
+                d.setDate(weekdayBase.getDate() + i);
+                daysOfWeek.push(d.toLocaleDateString(currentLocale, { weekday: 'short' }));
+            }
+
+            const headerRow = document.createElement('tr');
+            daysOfWeek.forEach(day => {
+                const th = document.createElement('th');
+                th.textContent = day.charAt(0).toUpperCase() + day.slice(1);
+                headerRow.appendChild(th);
+            });
+            calendar.appendChild(headerRow);
+
+            const firstDay = new Date(year, month, 1);
+            let startDay = firstDay.getDay();
+            startDay = (startDay + 6) % 7;
+
+            const daysCount = new Date(year, month + 1, 0).getDate();
+
+            let date = 1;
+            for (let i = 0; i < 6; i++) {
+                const row = document.createElement('tr');
+                for (let j = 0; j < 7; j++) {
+                    const cell = document.createElement('td');
+                    if (i === 0 && j < startDay) {
+                        cell.textContent = '';
+                    } 
+                    else if (date > daysCount) {
+                        cell.textContent = '';
+                    } 
+                    else {
+                        cell.textContent = date;
+                        const today = new Date();
+                        if (date === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                            cell.classList.add('today');
+                        }
+                        if (j === 5 || j === 6) {
+                            cell.classList.add('weekend');
+                        }
+                        date++;
+                    }
+                    row.appendChild(cell);
+                }
+                calendar.appendChild(row);
+                if (date > daysCount) break;
+            }
+        }
+        createCalendar();
+    </script>
+</body>
+</html>
