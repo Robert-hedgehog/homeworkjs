@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Bomber</title>
+        <style>
+
+            body {
+                height: 100%;
+                margin: 0;
+                font-family: sans-serif;
+                background-color: #fafafa;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+            }
+
+            h1 {
+                margin-bottom: 20px;
+                color: #333;
+            }
+
+            .game-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .sweeper-app {
+                --width: 12; 
+                display: inline-grid;
+                grid-template-columns: repeat(var(--width), 1fr);
+                grid-gap: 5px;
+                user-select: none;
+                background: #bbada0;
+                padding: 5px;
+                border-radius: 6px;
+            }
+
+            .sweeper-app__item {
+                background: #cdc1b4;
+                border: 1px solid #bbada0;
+                width: 25px;
+                height: 25px;
+                cursor: pointer;
+                font-size: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                border-radius: 3px;
+                transition: background 0.1s;
+            }
+
+            .sweeper-app__item:hover {
+                background: #d6cdc4;
+            }
+
+            .sweeper-app__item--open {
+                background: #eee4da;
+                cursor: default;
+                border-color: #bbada0;
+            }
+
+            .sweeper-app__item--focused {
+                box-shadow: 0 0 0 2px red;
+                z-index: 10;
+                position: relative;
+            }
+
+            .sweeper-app__item--flag {
+                background: #cdc1b4;
+            }
+
+            .restart-btn {
+                margin-top: 20px;
+                padding: 10px 20px;
+                font-size: 16px;
+                cursor: pointer;
+                background-color: #8f7a66;
+                color: white;
+                border: none;
+                border-radius: 4px;
+            }
+
+            .restart-btn:hover {
+                background-color: #7f6a56;
+            }
+
+            .controls {
+                margin-top: 25px;
+                font-size: 14px;
+                color: #777;
+                text-align: center;
+                line-height: 1.5;
+            }
+
+        </style>
+    </head>
+    <body>
+        
+        <div class="game-container">
+            <h1>Сапер</h1>
+            
+            <div class="sweeper-app">
+            </div>
+
+            <button class="restart-btn">Играть заново</button>
+
+            <div class="controls">
+                Левый клик — открыть / Правый — флажок<br>
+                <br>
+                Стрелки — ходить<br>
+                Enter или Пробел — открыть<br>
+                Ctrl + Enter (Win) или Cmd + Enter (Mac) — флажок
+            </div>
+            
+        </div>
+
+        <script>
+            (function() {
+                let app = document.querySelector('.sweeper-app');
+                let restartBtn = document.querySelector('.restart-btn');
+                
+                if (!app) return;
+
+                let width = 12;
+                let height = 12;
+                let mineCount = Math.ceil((width * height) * .15);
+
+                let started = false;
+                let gameOver = false;
+                let cellsToOpen = 0;
+                let openedCount = 0;
+                let cellMap = [];
+
+                let focusX = 0;
+                let focusY = 0;
+
+                function initGame() {
+                    app.innerHTML = '';
+                    cellMap = [];
+                    started = false;
+                    gameOver = false;
+                    openedCount = 0;
+                    cellsToOpen = (width * height) - mineCount;
+                    focusX = 0;
+                    focusY = 0;
+                    
+                    app.style.setProperty('--width', width);
+
+                    for (let y = 0; y < height; y++) {
+                        let row = [];
+                        for (let x = 0; x < width; x++) {
+                            let cell = document.createElement('div');
+                            cell.className = 'sweeper-app__item';
+                            cell.x = x;
+                            cell.y = y;
+                            cell.isMined = false;
+                            cell.neighborCount = 0;
+                            row.push(cell);
+                            app.append(cell);
+                        }
+                        cellMap.push(row);
+                    }
+                    updateFocus();
+                }
+
+                initGame();
+
+                restartBtn.addEventListener('click', () => {
+                    initGame();
+                    restartBtn.blur();
+                });
+
+                app.addEventListener('mine.start', () => console.log('Game Started'));
+                app.addEventListener('mine.step', (e) => console.log('Step:', e.detail));
+                app.addEventListener('mine.end', (e) => {
+                    gameOver = true;
+                    setTimeout(() => {
+                        if (e.detail.result === 'win') alert('Победа!');
+                        else alert('Вы проиграли!');
+                        revealAll();
+                    }, 100);
+                });
+
+                app.addEventListener('click', e => {
+                    if (gameOver) return;
+                    if (e.target.matches('.sweeper-app__item')) {
+                        focusX = e.target.x;
+                        focusY = e.target.y;
+                        updateFocus();
+                        handleLeftClick(e.target);
+                    }
+                });
+
+                app.addEventListener('contextmenu', e => {
+                    e.preventDefault();
+                    if (gameOver) return;
+                    if (e.target.matches('.sweeper-app__item')) {
+                        toggleFlag(e.target);
+                    }
+                });
+
+                document.addEventListener('keydown', e => {
+                    if (gameOver) return;
+                    
+                    let moved = false;
+
+                    if (e.key === 'ArrowUp') { focusY = Math.max(0, focusY - 1); moved = true; }
+                    else if (e.key === 'ArrowDown') { focusY = Math.min(height - 1, focusY + 1); moved = true; }
+                    else if (e.key === 'ArrowLeft') { focusX = Math.max(0, focusX - 1); moved = true; }
+                    else if (e.key === 'ArrowRight') { focusX = Math.min(width - 1, focusX + 1); moved = true; }
+                    
+                    else if ((e.key === 'Enter' || e.code === 'Space') && (e.ctrlKey || e.metaKey)) {
+                        toggleFlag(cellMap[focusY][focusX]);
+                        e.preventDefault();
+                    }
+                    else if (e.key === 'Enter' || e.code === 'Space') {
+                        handleLeftClick(cellMap[focusY][focusX]);
+                        e.preventDefault();
+                    }
+
+                    if (moved) {
+                        e.preventDefault();
+                        updateFocus();
+                    }
+                });
+
+                function updateFocus() {
+                    document.querySelectorAll('.sweeper-app__item--focused')
+                        .forEach(el => el.classList.remove('sweeper-app__item--focused'));
+                    
+                    if(cellMap[focusY] && cellMap[focusY][focusX]) {
+                        cellMap[focusY][focusX].classList.add('sweeper-app__item--focused');
+                    }
+                }
+
+                function handleLeftClick(cell) {
+                    if (cell.classList.contains('sweeper-app__item--flag') || 
+                        cell.classList.contains('sweeper-app__item--open')) return;
+
+                    if (!started) {
+                        allocateMines(cell.x, cell.y);
+                        started = true;
+                        app.dispatchEvent(new CustomEvent('mine.start'));
+                    }
+
+                    app.dispatchEvent(new CustomEvent('mine.step', { detail: { x: cell.x, y: cell.y } }));
+                    openCell(cell.x, cell.y);
+                }
+
+                function toggleFlag(cell) {
+                    if (cell.classList.contains('sweeper-app__item--open')) return;
+                    
+                    cell.classList.toggle('sweeper-app__item--flag');
+                    cell.textContent = cell.classList.contains('sweeper-app__item--flag') ? "🚩" : "";
+                }
+
+                function openCell(x, y) {
+                    if (x < 0 || x >= width || y < 0 || y >= height) return;
+                    let cell = cellMap[y][x];
+
+                    if (cell.classList.contains('sweeper-app__item--open') || cell.classList.contains('sweeper-app__item--flag')) return;
+
+                    cell.classList.add('sweeper-app__item--open');
+
+                    if (cell.isMined) {
+                        cell.textContent = '💣';
+                        cell.style.backgroundColor = '#ff8a80';
+                        app.dispatchEvent(new CustomEvent('mine.end', { detail: { result: 'loss' } }));
+                        return;
+                    }
+
+                    openedCount++;
+                    
+                    if (cell.neighborCount > 0) {
+                        cell.textContent = cell.neighborCount;
+                        let colors = ['#1976d2', '#388e3c', '#d32f2f', '#7b1fa2', '#ff8f00', '#0097a7', '#424242', '#8d6e63'];
+                        cell.style.color = colors[cell.neighborCount - 1] || 'black';
+                    } else {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                openCell(x + dx, y + dy);
+                            }
+                        }
+                    }
+
+                    if (openedCount === cellsToOpen && !gameOver) {
+                        app.dispatchEvent(new CustomEvent('mine.end', { detail: { result: 'win' } }));
+                    }
+                }
+
+                function revealAll() {
+                    cellMap.flat().forEach(cell => {
+                        if (cell.isMined) {
+                            cell.textContent = '💣';
+                            if (!cell.classList.contains('sweeper-app__item--open')) {
+                                cell.style.backgroundColor = '#ffccbc';
+                            }
+                        }
+                    });
+                }
+
+                function allocateMines(sx, sy) {
+                    let curCount = 0;
+                    while (curCount < mineCount) {
+                        let x = Math.floor(Math.random() * width);
+                        let y = Math.floor(Math.random() * height);
+                        if (Math.abs(x - sx) <= 1 && Math.abs(y - sy) <= 1) continue;
+                        
+                        let cell = cellMap[y][x];
+                        if (!cell.isMined) {
+                            cell.isMined = true;
+                            curCount++;
+                        }
+                    }
+                    calculateCount();
+                }
+
+                function calculateCount() {
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            if (!cellMap[y][x].isMined) {
+                                cellMap[y][x].neighborCount = calculateNum(x, y);
+                            }
+                        }
+                    }
+                }
+
+                function calculateNum(sx, sy) {
+                    let n = 0;
+                    for (let y = sy - 1; y <= sy + 1; y++) {
+                        for (let x = sx - 1; x <= sx + 1; x++) {
+                            if (cellMap[y] && cellMap[y][x]) {
+                                if (cellMap[y][x].isMined) n++;
+                            }
+                        }
+                    }
+                    return n;
+                }
+
+            }) ();
+        </script>
+    </body>
+</html>
