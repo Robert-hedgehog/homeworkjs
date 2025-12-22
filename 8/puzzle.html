@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Puzzle</title>
+    <style>
+        
+        body {
+            background-color: rgb(152, 152, 152);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        #pieces-container, #puzzle-board {
+            width: 400px;
+            height: 400px;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            border: 2px solid #555;
+            background-color: white;
+        }
+
+        .slot {
+            border: 1px solid #eee;
+            width: 50px;
+            height: 50px;
+            box-sizing: border-box;
+        }
+
+        .piece {
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            background-image: url('https://images.unsplash.com/photo-1761850648640-2ee5870ee883?q=80&w=2070&auto=format&fit=crop');
+            background-size: 400px 400px;
+        }
+
+        .piece.dragging {
+            opacity: 0.5;
+        }
+
+        .controls {
+            text-align: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #message {
+            margin-top: 10px;
+            font-weight: bold;
+            color: black;
+            height: 20px;
+        }
+        
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div id="pieces-container"></div>
+        <div id="puzzle-board"></div>
+    </div>
+
+    <div class="controls">
+        <button onclick="startGame()">Начать заново и перемешать</button>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        const rows = 8;
+        const cols = 8;
+        const pieceSize = 50;
+
+        const piecesContainer = document.getElementById('pieces-container');
+        const board = document.getElementById('puzzle-board');
+        const messageDiv = document.getElementById('message');
+
+        function startGame() {
+            piecesContainer.innerHTML = '';
+            board.innerHTML = '';
+            messageDiv.textContent = '';
+
+            for (let i = 0; i < rows * cols; i++) {
+                const slot = document.createElement('div');
+                slot.className = 'slot';
+                slot.dataset.index = i;
+                slot.ondragover = (e) => e.preventDefault();
+                slot.ondrop = handleDrop;
+
+                board.appendChild(slot);
+            }
+
+            let piecesArray = [];
+            for (let i = 0; i < rows * cols; i++) {
+                const piece = document.createElement('div');
+                piece.className = 'piece';
+                piece.draggable = true;
+                piece.id = 'p' + i;
+                piece.dataset.index = i;
+                const r = Math.floor(i / cols);
+                const c = i % cols;
+                piece.style.backgroundPosition = `-${c * pieceSize}px -${r * pieceSize}px`;
+                piece.ondragstart = (e) => {
+                    e.dataTransfer.setData('text', e.target.id);
+                    e.target.classList.add('dragging');
+                };
+                piece.ondragend = (e) => e.target.classList.remove('dragging');
+
+                piecesArray.push(piece);
+            }
+
+            piecesArray.sort(() => Math.random() - 0.5);
+            piecesArray.forEach(p => piecesContainer.appendChild(p));
+            piecesContainer.ondragover = (e) => e.preventDefault();
+            piecesContainer.ondrop = handleDrop;
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const pieceId = e.dataTransfer.getData('text');
+            const piece = document.getElementById(pieceId);
+            
+            if (e.target.classList.contains('slot') && e.target.children.length === 0) {
+                e.target.appendChild(piece);
+            } else if (e.target.id === 'pieces-container') {
+                e.target.appendChild(piece);
+            }
+
+            checkWin();
+        }
+
+        function checkWin() {
+            const slots = document.querySelectorAll('.slot');
+            let correct = 0;
+
+            slots.forEach(slot => {
+                if (slot.children.length > 0) {
+                    if (slot.dataset.index === slot.children[0].dataset.index) {
+                        correct++;
+                    }
+                }
+            });
+
+            if (correct === rows * cols) {
+                messageDiv.textContent = 'Вы собрали пазл!';
+            }
+        }
+        
+        startGame();
+
+    </script>
+</body>
+</html>
